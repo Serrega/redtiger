@@ -7,11 +7,11 @@ import re
 import pickle
 
 
-def get_request(url: str, param: dict, cooks={}, method='get') -> str:
+def get_request(url: str, param: dict, cook={}, method='get') -> str:
     try:
-        response = (requests.get(url, params=param, cookies=cooks)
+        response = (requests.get(url, params=param, cookies=cook)
                     if method == 'get' else
-                    requests.post(url, data=param, cookies=cooks))
+                    requests.post(url, data=param, cookies=cook))
         response.raise_for_status()
     except HTTPError as http_err:
         print(f'HTTP error occurred: {http_err}')
@@ -108,11 +108,22 @@ def main():
 
     data = dict(user=keys[0], password=keys[1], login='Login')
     response = get_request(url, data, method='post')
-    passw = extract_pass(response)
-    print(passw)
-    cooks = dict(level2login=passw.replace(pass_r, ''))
-    with open('cooks.pickle', 'wb') as f:
-        pickle.dump(cooks, f)
+    passw = extract_pass(response).replace(pass_r, '')
+    print('password:', passw)
+
+    try:
+        with open('cooks.pickle', 'rb') as f:
+            cooks = pickle.load(f)
+        if ('level2login' not in cooks) or (cooks['level2login'] != passw):
+            cooks['level2login'] = passw
+    except:
+        cooks = dict(level2login=passw)
+        try:
+            with open('cooks.pickle', 'wb') as f:
+                pickle.dump(cooks, f)
+        except:
+            print('can not write cookies')
+            exit(1)
 
 
 if __name__ == '__main__':

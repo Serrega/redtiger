@@ -5,11 +5,11 @@ from bs4 import BeautifulSoup
 import re
 
 
-def get_request(url: str, param: dict, cooks={}, method='get') -> str:
+def get_request(url: str, param: dict, cook={}, method='get') -> str:
     try:
-        response = (requests.get(url, params=param, cookies=cooks)
+        response = (requests.get(url, params=param, cookies=cook)
                     if method == 'get' else
-                    requests.post(url, data=param, cookies=cooks))
+                    requests.post(url, data=param, cookies=cook))
         response.raise_for_status()
     except HTTPError as http_err:
         print(f'HTTP error occurred: {http_err}')
@@ -29,8 +29,15 @@ def extract_pass(response: str):
 def main():
     pass_r = 'The password for the next level is: '
 
-    with open('cooks.pickle', 'rb') as f:
-        cooks = pickle.load(f)
+    try:
+        with open('cooks.pickle', 'rb') as f:
+            cooks = pickle.load(f)
+        if 'level2login' not in cooks:
+            print('use level 1')
+            exit(1)
+    except:
+        print('use level 1')
+        exit(1)
 
     url = "https://redtiger.labs.overthewire.org/level2.php"
 
@@ -40,10 +47,12 @@ def main():
         login="Login"
     )
 
-    response = get_request(url, param, cooks, method='post')
-    passw = extract_pass(response)
-    print(passw)
-    cooks = dict(cooks, level3login=passw.replace(pass_r, ''))
+    cook = dict(level2login=cooks['level2login'])
+    response = get_request(url, param, cook, method='post')
+    passw = extract_pass(response).replace(pass_r, '')
+    print('password:', passw)
+    if ('level3login' not in cooks) or (cooks['level3login'] != passw):
+        cooks['level3login'] = passw
     with open('cooks.pickle', 'wb') as f:
         pickle.dump(cooks, f)
 
