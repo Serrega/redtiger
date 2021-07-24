@@ -41,6 +41,7 @@ def main():
     passw = tg.extract_pass(response, pass_r).replace(pass_r, '')
     print('password:', passw)
 
+    # Save cookie
     if ('level5login' not in cooks) or (cooks['level5login'] != passw):
         cooks['level5login'] = passw
         tg.save_cookies(cooks)

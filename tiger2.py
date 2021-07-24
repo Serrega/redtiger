@@ -28,6 +28,8 @@ def main():
     # Еxtracting data from html
     passw = tg.extract_pass(response, pass_r).replace(pass_r, '')
     print('password:', passw)
+
+    # Save cookie
     if ('level3login' not in cooks) or (cooks['level3login'] != passw):
         cooks['level3login'] = passw
         tg.save_cookies(cooks)
