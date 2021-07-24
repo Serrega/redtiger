@@ -6,6 +6,8 @@ from bs4 import BeautifulSoup
 import re
 import difflib
 
+from itertools import compress
+
 
 def get_request(url: str, param: dict, cook={}, method='get') -> str:
     try:
@@ -110,20 +112,39 @@ def find_param(url: str,
     html_responce: response from the web page
     key: list of desired data
     '''
-
+    
     param = {p: encode(payload)}
-    html_responce = get_request(url, param, cook)
-
+    html_response = get_request(url, param, cook)
+    
     # Find differens
-    n = -1
-    key = [''] * len_key
-    for s in difflib.ndiff(html_responce, html_visible):
-        if s[0] == ' ':
-            continue
-        elif s[0] == '-':
-            key[n] += s[-1]
-        elif s[0] == '+':
-            n += 1
+    key = ['']*len_key
+    j = 0
+    html_r = html_response.split('\n')
+    print(html_r)
+    html_v = html_visible.split('\n')
+    print(html_v)    
+    for i,r in enumerate(html_r):
+        r = r.replace('</td>', '')
+        v = (html_v[i].replace('</td>', '')).ljust(len(r))
+        strings = [r, v]
+        diff = map(str.__ne__, *strings)
+        df = [''.join(compress(s, diff)) for s in strings]
+        if df != ['', '']:
+            print('df', df, df[0])
+            key[j] = df[0]
+            j += 1
+            
+    #if key in one string
+    if key[1] == '':
+        tmp = ''
+        i = 0
+        while key[0][i] != '<':
+            tmp += key[0][i]
+            i += 1
+        key[0] = key[0].replace('</b>', '').replace('<br>', '')
+        key[1] = key[0][i:]
+        key[0] = tmp
+
     return key
 
 

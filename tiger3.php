@@ -1,8 +1,4 @@
-<?php
-
-        // warning! ugly code ahead :)
-        // requires php5.x, sorry for that
-                
+<?php                
         function encrypt($str)
         {
                 $cryptedstr = "";
@@ -10,7 +6,6 @@
                 for ($i =0; $i < strlen($str); $i++)
                 {
                         $srd = rand(0, 255);
-                        //print($srd);
                         $temp = ord(substr($str,$i,1)) ^ $srd;
                         
                         while(strlen($temp)<3)
@@ -49,13 +44,8 @@
                 }
                 return false;
         }
-        
-        //$str = "MDQyMjExMDE0MTgyMTQwMTY5MjE2MDI0MjA1MTE1MTg1MTUzMDkxMjM5MDI5MDI4MjU1MDg2MTg5MDcz";
-        //$rez = decrypt($str);
-        //$str = "' union select 1,2,3,username,password,6,7 from level3_users where username='Admin' -- ";
-        //$rez = encrypt($str);
+
         $rez = $argv[1];
-        //print($rez);
         $rez = encrypt($rez);
         print($rez);
 ?>
