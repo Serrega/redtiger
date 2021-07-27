@@ -3,10 +3,6 @@ import pickle
 import tigers as tg
 
 
-def str_to_hex(s: str) -> str:
-    return '0x' + (s.encode('utf-8')).hex()
-
-
 def main():
     '''
     Target: Get the name of the user who posted the news about google. 

@@ -5,7 +5,6 @@ import pickle
 from bs4 import BeautifulSoup
 import re
 import difflib
-
 from itertools import compress
 
 
@@ -52,7 +51,8 @@ def count_columns(url: str, payload: str, p: str, cook={}, encode=none_func) -> 
     html_responce_1 = ''
     for i in range(1, max_columns):
         pl = payload % str(i)
-        print(pl)
+        if encode != none_func:
+            print(pl)
         param = {p: encode(pl)}
         html_responce_2 = get_request(url, param, cook)
         for s in difflib.ndiff(html_responce_2, html_responce_1):
