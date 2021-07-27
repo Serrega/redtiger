@@ -4,6 +4,10 @@ import tigers as tg
 
 
 def main():
+    '''
+    Target: Get the value of the first entry in table level4_secret in column keyword
+    Disabled: like
+    '''
     base_name = 'level4_secret'
     url = "https://redtiger.labs.overthewire.org/level4.php"
     finds = 'keyword'  # What we are finding

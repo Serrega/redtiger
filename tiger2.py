@@ -4,6 +4,10 @@ import tigers as tg
 
 
 def main():
+    '''
+    Target: Login
+    Hint: Condition
+    '''
     url = "https://redtiger.labs.overthewire.org/level2.php"
     pass_r = 'The password for the next level is: '
 

