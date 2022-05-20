@@ -11,7 +11,7 @@ def main():
     '''
     Target: Get the password of the admin.
     '''
-    base_name = 'level9_users'
+    table_name = 'level9_users'
     url = "https://redtiger.labs.overthewire.org/level9.php"
     finds = ['username', 'password']  # What we are finding
     pass_r = 'The password for the next level is: '
@@ -36,7 +36,7 @@ def main():
 
     # Authorization
     data = dict(user=autor, password=title, login='Login')
-    response = tg.post_request(url, data, cook)
+    response = req.post_request(url, data, cook)
 
     # Еxtracting data from html
     passw = tg.extract_pass(response, pass_r).replace(pass_r, '')

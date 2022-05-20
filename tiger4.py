@@ -10,6 +10,7 @@ def main():
     Blind SQL Injection.
 
     Target: Get the value of the first entry in table level4_secret in column keyword
+
     Disabled: like
     '''
     base_name = 'level4_secret'

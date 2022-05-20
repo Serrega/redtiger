@@ -26,7 +26,7 @@ def main():
 
     # Authorization
     data = dict(login=ser, dologin='Login')
-    response = req.post_request(url, data, cook)
+    response = req.post_request(url, data, cook, print_param=False)
 
     print(response)
 

